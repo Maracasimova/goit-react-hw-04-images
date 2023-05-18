@@ -1,102 +1,80 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Button from './Button/Button';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
-import fetchImages from './pixabayAPI';
 import style from './App.module.css';
 
-class App extends Component {
-  state = {
-    images: [],
-    currentPage: 1,
-    searchQuery: '',
-    isLoading: false,
-    isModalOpen: false,
-    modalImageURL: '',
-  };
+const App = () => {
+  const [images, setImages] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalImageURL, setModalImageURL] = useState('');
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.searchQuery !== this.state.searchQuery &&
-      this.state.images.length > 0
-    ) {
-      this.fetchImages();
-    }
-  }
-
-  toggleModal = () => {
-    this.setState(({ isModalOpen }) => ({
-      isModalOpen: !isModalOpen,
-    }));
-  };
-
-  onImageClick = modalImageURL => {
-    this.setState({
-      modalImageURL,
-      isModalOpen: true,
-    });
-  };
-
-  onChangeQuery = searchQuery => {
-    this.setState(
-      {
-        searchQuery,
-        currentPage: 1,
-        images: [],
-      },
-      () => {
-        this.fetchImages();
-      }
-    );
-  };
-
-  fetchImages = () => {
-    const { currentPage, searchQuery } = this.state;
+  const fetchImages = useCallback(() => {
     const options = {
       searchQuery,
       currentPage,
     };
 
-    this.setState({ isLoading: true });
+    setIsLoading(true);
 
     fetchImages(options)
-      .then(images => {
-        this.setState(prevState => ({
-          images: [...prevState.images, ...images],
-          currentPage: prevState.currentPage + 1,
-        }));
+      .then(newImages => {
+        setImages(prevImages => [...prevImages, ...newImages]);
+        setCurrentPage(prevPage => prevPage + 1);
       })
       .catch(error => console.log(error))
       .finally(() => {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
         window.scrollTo({
           top: document.documentElement.scrollHeight,
           behavior: 'smooth',
         });
       });
+  }, [searchQuery, currentPage]);
+
+  useEffect(() => {
+    if (searchQuery !== '' && images.length > 0) {
+      fetchImages();
+    }
+  }, [searchQuery, images, fetchImages]);
+
+ const toggleModal = () => {
+    setIsModalOpen(prevState => !prevState);
   };
 
-  render() {
-    const { images, isLoading, isModalOpen, modalImageURL } = this.state;
-    const shouldRenderLoadMoreButton = images.length > 0 && !isLoading;
+  const onImageClick = modalImageURL => {
+    setModalImageURL(modalImageURL);
+    setIsModalOpen(true);
+  };
 
+  const onChangeQuery = searchQuery => {
+    setSearchQuery(searchQuery);
+    setCurrentPage(1);
+    setImages([]);
+    fetchImages();
+  };
+
+  const shouldRenderLoadMoreButton = images.length > 0 && !isLoading;
     return (
       <div className={style.App}>
-        <Searchbar onSubmit={this.onChangeQuery} />
+        <Searchbar onSubmit={onChangeQuery} />
         {images.length > 0 && (
-          <ImageGallery images={images} onImageClick={this.onImageClick} />
+          <ImageGallery images={images} onImageClick={onImageClick} />
         )}
 
         {isLoading && <Loader />}
         {shouldRenderLoadMoreButton && (
-          <Button onLoadMore={this.fetchImages} hasMore={!isLoading} />
+          <Button onLoadMore={fetchImages} hasMore={!isLoading} />
         )}
         {isModalOpen && (
           <Modal
             isOpen={isModalOpen}
-            onClose={this.toggleModal}
+            onClose={toggleModal}
             imageUrl={modalImageURL}
           >
             <img src={modalImageURL} alt="" />
@@ -105,6 +83,5 @@ class App extends Component {
       </div>
     );
   }
-}
 
 export default App;
