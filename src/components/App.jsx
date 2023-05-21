@@ -1,80 +1,106 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { Component } from 'react';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Button from './Button/Button';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
+import fetchImages from './pixabayAPI';
 import style from './App.module.css';
 
-const App = () => {
-  const [images, setImages] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalImageURL, setModalImageURL] = useState('');
+class App extends Component {
+  state = {
+    images: [],
+    currentPage: 1,
+    searchQuery: '',
+    isLoading: false,
+    isModalOpen: false,
+    modalImageURL: '',
+    showBtn: false,
+  };
 
-  const fetchImages = useCallback(() => {
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      prevState.searchQuery !== this.state.searchQuery ||
+      prevState.currentPage !== this.state.currentPage
+    ) {
+      this.fetchImages();
+    }
+  }
+
+  toggleModal = () => {
+    this.setState(({ isModalOpen }) => ({
+      isModalOpen: !isModalOpen,
+    }));
+  };
+
+  onImageClick = modalImageURL => {
+    this.setState({
+      modalImageURL,
+      isModalOpen: true,
+    });
+  };
+
+  onChangeQuery = searchQuery => {
+    this.setState({
+      searchQuery,
+      currentPage: 1,
+      images: [],
+    });
+  };
+
+  fetchImages = () => {
+    const { currentPage, searchQuery } = this.state;
     const options = {
       searchQuery,
       currentPage,
     };
 
-    setIsLoading(true);
+    this.setState({ isLoading: true });
 
     fetchImages(options)
-      .then(newImages => {
-        setImages(prevImages => [...prevImages, ...newImages]);
-        setCurrentPage(prevPage => prevPage + 1);
+      .then(data => {
+        this.setState(prevState => ({
+          images: [...prevState.images, ...data.hits],
+          showBtn: currentPage < Math.ceil(data.totalHits / 12),
+        }));
       })
       .catch(error => console.log(error))
       .finally(() => {
-        setIsLoading(false);
+        this.setState({ isLoading: false });
         window.scrollTo({
           top: document.documentElement.scrollHeight,
           behavior: 'smooth',
         });
       });
-  }, [searchQuery, currentPage]);
-
-  useEffect(() => {
-    if (searchQuery !== '' && images.length > 0) {
-      fetchImages();
-    }
-  }, [searchQuery, images, fetchImages]);
-
- const toggleModal = () => {
-    setIsModalOpen(prevState => !prevState);
   };
 
-  const onImageClick = modalImageURL => {
-    setModalImageURL(modalImageURL);
-    setIsModalOpen(true);
-  };
+  incrementPage() {
+    this.setState(prevState => ({
+      currentPage: prevState.currentPage + 1,
+    }));
+  }
 
-  const onChangeQuery = searchQuery => {
-    setSearchQuery(searchQuery);
-    setCurrentPage(1);
-    setImages([]);
-    fetchImages();
-  };
+  render() {
+    const { images, isLoading, isModalOpen, modalImageURL, showBtn } =
+      this.state;
 
-  const shouldRenderLoadMoreButton = images.length > 0 && !isLoading;
     return (
       <div className={style.App}>
-        <Searchbar onSubmit={onChangeQuery} />
+        <Searchbar onSubmit={this.onChangeQuery} />
         {images.length > 0 && (
-          <ImageGallery images={images} onImageClick={onImageClick} />
+          <ImageGallery images={images} onImageClick={this.onImageClick} />
         )}
-
         {isLoading && <Loader />}
-        {shouldRenderLoadMoreButton && (
-          <Button onLoadMore={fetchImages} hasMore={!isLoading} />
+        {showBtn && (
+          <Button
+            onLoadMore={() => this.incrementPage()}
+            hasMore={!isLoading}
+          />
         )}
         {isModalOpen && (
           <Modal
             isOpen={isModalOpen}
-            onClose={toggleModal}
+            onClose={this.toggleModal}
             imageUrl={modalImageURL}
           >
             <img src={modalImageURL} alt="" />
@@ -83,5 +109,6 @@ const App = () => {
       </div>
     );
   }
+}
 
 export default App;
