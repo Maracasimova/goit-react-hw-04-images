@@ -13,11 +13,11 @@ const pixabayAPI = axios.create({
   },
 });
 
-const fetchImages = async ({ searchQuery = '', currentPage = 1 }) => {
+const getImagesFromAPI = async ({ searchQuery = '', currentPage = 1 }) => {
   const response = await pixabayAPI.get('', {
     params: { q: searchQuery, page: currentPage },
   });
   return response.data;
 };
 
-export default fetchImages;
+export default getImagesFromAPI;
