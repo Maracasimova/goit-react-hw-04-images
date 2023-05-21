@@ -17,7 +17,7 @@ const fetchImages = async ({ searchQuery = '', currentPage = 1 }) => {
   const response = await pixabayAPI.get('', {
     params: { q: searchQuery, page: currentPage },
   });
-  return response.data.hits;
+  return response.data;
 };
 
 export default fetchImages;
