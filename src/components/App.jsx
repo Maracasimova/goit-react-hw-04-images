@@ -1,72 +1,65 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Button from './Button/Button';
 import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
-import fetchImages from './pixabayAPI';
+import getImagesFromAPI from './pixabayAPI';
 import style from './App.module.css';
 
-class App extends Component {
-  state = {
-    images: [],
-    currentPage: 1,
-    searchQuery: '',
-    isLoading: false,
-    isModalOpen: false,
-    modalImageURL: '',
-    showBtn: false,
-  };
+function App() {
+  const [images, setImages] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalImageURL, setModalImageURL] = useState('');
+  const [showBtn, setShowBtn] = useState(false);
+  const prevSearchQuery = useRef('');
+  const prevCurrentPage = useRef(1);
 
-  componentDidUpdate(prevProps, prevState) {
+  useEffect(() => {
     if (
-      prevState.searchQuery !== this.state.searchQuery ||
-      prevState.currentPage !== this.state.currentPage
+      prevSearchQuery.current !== searchQuery ||
+      prevCurrentPage.current !== currentPage
     ) {
-      this.fetchImages();
+      fetchImages();
     }
-  }
 
-  toggleModal = () => {
-    this.setState(({ isModalOpen }) => ({
-      isModalOpen: !isModalOpen,
-    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, currentPage]);
+
+  const toggleModal = () => {
+    setIsModalOpen(prevIsModalOpen => !prevIsModalOpen);
   };
 
-  onImageClick = modalImageURL => {
-    this.setState({
-      modalImageURL,
-      isModalOpen: true,
-    });
+  const onImageClick = modalImageURL => {
+    setModalImageURL(modalImageURL);
+    setIsModalOpen(true);
   };
 
-  onChangeQuery = searchQuery => {
-    this.setState({
-      searchQuery,
-      currentPage: 1,
-      images: [],
-    });
+  const onChangeQuery = searchQuery => {
+    setSearchQuery(searchQuery);
+    setCurrentPage(1);
+    setImages([]);
   };
 
-  fetchImages = () => {
-    const { currentPage, searchQuery } = this.state;
+  const fetchImages = () => {
     const options = {
       searchQuery,
       currentPage,
     };
 
-    this.setState({ isLoading: true });
+    setIsLoading(true);
 
-    fetchImages(options)
+    getImagesFromAPI(options)
       .then(data => {
-        this.setState(prevState => ({
-          images: [...prevState.images, ...data.hits],
-          showBtn: currentPage < Math.ceil(data.totalHits / 12),
-        }));
+        setImages(prevImages => [...prevImages, ...data.hits]);
+        setShowBtn(prevShowBtn => currentPage < Math.ceil(data.totalHits / 12));
       })
       .catch(error => console.log(error))
       .finally(() => {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
         window.scrollTo({
           top: document.documentElement.scrollHeight,
           behavior: 'smooth',
@@ -74,41 +67,31 @@ class App extends Component {
       });
   };
 
-  incrementPage() {
-    this.setState(prevState => ({
-      currentPage: prevState.currentPage + 1,
-    }));
-  }
+  const incrementPage = () => {
+    setCurrentPage(prevCurrentPage => prevCurrentPage + 1);
+  };
 
-  render() {
-    const { images, isLoading, isModalOpen, modalImageURL, showBtn } =
-      this.state;
-
-    return (
-      <div className={style.App}>
-        <Searchbar onSubmit={this.onChangeQuery} />
-        {images.length > 0 && (
-          <ImageGallery images={images} onImageClick={this.onImageClick} />
-        )}
-        {isLoading && <Loader />}
-        {showBtn && (
-          <Button
-            onLoadMore={() => this.incrementPage()}
-            hasMore={!isLoading}
-          />
-        )}
-        {isModalOpen && (
-          <Modal
-            isOpen={isModalOpen}
-            onClose={this.toggleModal}
-            imageUrl={modalImageURL}
-          >
-            <img src={modalImageURL} alt="" />
-          </Modal>
-        )}
-      </div>
-    );
-  }
+  return (
+    <div className={style.App}>
+      <Searchbar onSubmit={onChangeQuery} />
+      {images.length > 0 && (
+        <ImageGallery images={images} onImageClick={onImageClick} />
+      )}
+      {isLoading && <Loader />}
+      {showBtn && (
+        <Button onLoadMore={() => incrementPage()} hasMore={!isLoading} />
+      )}
+      {isModalOpen && (
+        <Modal
+          isOpen={isModalOpen}
+          onClose={toggleModal}
+          imageUrl={modalImageURL}
+        >
+          <img src={modalImageURL} alt="" />
+        </Modal>
+      )}
+    </div>
+  );
 }
 
 export default App;
