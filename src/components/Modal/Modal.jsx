@@ -9,10 +9,10 @@ const Modal = ({ onClose, imageUrl }) => {
         onClose();
       }
     };
-    window.addEventListener('keybord', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('keybord', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
 
