@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Button from './Button/Button';
@@ -15,18 +15,35 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImageURL, setModalImageURL] = useState('');
   const [showBtn, setShowBtn] = useState(false);
-  const prevSearchQuery = useRef('');
-  const prevCurrentPage = useRef(1);
 
   useEffect(() => {
-    if (
-      prevSearchQuery.current !== searchQuery ||
-      prevCurrentPage.current !== currentPage
-    ) {
-      fetchImages();
-    }
+    if (!searchQuery) return;
+    const fetchImages = () => {
+      const options = {
+        searchQuery,
+        currentPage,
+      };
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      setIsLoading(true);
+
+      getImagesFromAPI(options)
+        .then(data => {
+          setImages(prevImages => [...prevImages, ...data.hits]);
+          setShowBtn(
+            prevShowBtn => currentPage < Math.ceil(data.totalHits / 12)
+          );
+        })
+        .catch(error => console.log(error))
+        .finally(() => {
+          setIsLoading(false);
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: 'smooth',
+          });
+        });
+    };
+
+    fetchImages();
   }, [searchQuery, currentPage]);
 
   const toggleModal = () => {
@@ -42,29 +59,6 @@ function App() {
     setSearchQuery(searchQuery);
     setCurrentPage(1);
     setImages([]);
-  };
-
-  const fetchImages = () => {
-    const options = {
-      searchQuery,
-      currentPage,
-    };
-
-    setIsLoading(true);
-
-    getImagesFromAPI(options)
-      .then(data => {
-        setImages(prevImages => [...prevImages, ...data.hits]);
-        setShowBtn(prevShowBtn => currentPage < Math.ceil(data.totalHits / 12));
-      })
-      .catch(error => console.log(error))
-      .finally(() => {
-        setIsLoading(false);
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth',
-        });
-      });
   };
 
   const incrementPage = () => {
@@ -83,9 +77,8 @@ function App() {
       )}
       {isModalOpen && (
         <Modal
-          isOpen={isModalOpen}
           onClose={toggleModal}
-          imageUrl={modalImageURL}
+          imageUrl={typeof modalImageURL === 'string' ? modalImageURL : ''}
         >
           <img src={modalImageURL} alt="" />
         </Modal>
