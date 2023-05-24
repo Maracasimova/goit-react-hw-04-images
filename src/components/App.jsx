@@ -29,9 +29,7 @@ function App() {
       getImagesFromAPI(options)
         .then(data => {
           setImages(prevImages => [...prevImages, ...data.hits]);
-          setShowBtn(
-            prevShowBtn => currentPage < Math.ceil(data.totalHits / 12)
-          );
+          setShowBtn(currentPage < Math.ceil(data.totalHits / 12));
         })
         .catch(error => console.log(error))
         .finally(() => {
